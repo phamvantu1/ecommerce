@@ -1,0 +1,42 @@
+# ========== General ==========
+*.log
+*.env
+.env.*
+.DS_Store
+Thumbs.db
+
+# ========== Node.js (Frontend - React/Angular/Vue) ==========
+electro-client/node_modules/
+electro-client/dist/
+electro-client/build/
+electro-client/.angular/
+electro-client/.next/
+electro-client/.vite/
+
+# ========== Java & Maven (Backend - Spring Boot) ==========
+electro-server/target/
+*.class
+*.jar
+*.war
+*.ear
+
+# ========== Gradle ==========
+.gradle/
+build/
+
+# ========== IntelliJ IDEA / JetBrains ==========
+.idea/
+*.iml
+*.iws
+out/
+
+# ========== Eclipse ==========
+*.classpath
+*.project
+*.settings/
+
+# ========== VS Code ==========
+.vscode/
+
+# ========== Logs ==========
+logs/
