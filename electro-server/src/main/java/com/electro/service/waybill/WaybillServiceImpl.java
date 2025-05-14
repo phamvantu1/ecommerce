@@ -306,7 +306,7 @@ public class WaybillServiceImpl implements WaybillService {
 
     @Override
     public void callbackStatusWaybillFromGHN(GhnCallbackOrderRequest ghnCallbackOrderRequest) {
-        if (Objects.equals(ghnCallbackOrderRequest.getShopID().toString(), ghnShopId)) {
+        if (Objects.equals(ghnCallbackOrderRequest.getShopID().toString(), "121327")) {
             Waybill waybill = waybillRepository.findByCode(ghnCallbackOrderRequest.getOrderCode())
                     .orElseThrow(() -> new ResourceNotFoundException(
                             ResourceName.WAYBILL, FieldName.WAYBILL_CODE, ghnCallbackOrderRequest.getOrderCode()));
