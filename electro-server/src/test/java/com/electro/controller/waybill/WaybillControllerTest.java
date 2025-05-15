@@ -123,7 +123,7 @@ class WaybillControllerTest {
     }
 
     /**
-     * TC05 - Mục tiêu: Kiểm tra response luôn trả về ObjectNode rỗng và status OK
+     * TC_WAYBILL_059 - Mục tiêu: Kiểm tra response luôn trả về ObjectNode rỗng và status OK
      * Input: request bất kỳ
      * Expected Output: ResponseEntity với status 404 và body là ObjectNode rỗng
      */

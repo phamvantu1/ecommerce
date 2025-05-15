@@ -59,7 +59,7 @@ class ClientOrderControllerTest {
 // Input: username = "john_doe", page = 1, size = 10, sort = "createdAt,desc", filter = null
 // Expected: HTTP 200, trả về 1 đơn hàng được ánh xạ thành công sang response
 
-    //TCG01
+    //TC_ORDER_020
     @Test
     void testGetAllOrders_SuccessWithoutFilter() {
         // Arrange
@@ -90,7 +90,7 @@ class ClientOrderControllerTest {
     // Test lấy danh sách đơn hàng thành công khi có filter hợp lệ
 // Input: username = "john_doe", page = 1, size = 10, sort = "createdAt,desc", filter = "status:DELIVERED"
 // Expected: HTTP 200, trả về 1 đơn hàng đã lọc theo filter
-    //TCG02
+    //TC_ORDER_021
     @Test
     void testGetAllOrders_SuccessWithFilter() {
         String username = "john_doe";
@@ -119,7 +119,7 @@ class ClientOrderControllerTest {
     // Test lấy danh sách đơn hàng thành công khi có filter hợp lệ
 // Input: username = "john_doe", page = 1, size = 10, sort = "createdAt,desc", filter = "status:DELIVERED"
 // Expected: HTTP 200, trả về 1 đơn hàng đã lọc theo filter
-    //TCG03
+    //TC_ORDER_022
     @Test
     void testGetAllOrders_EmptyOrderList() {
         String username = "john_doe";
@@ -142,7 +142,7 @@ class ClientOrderControllerTest {
     // Test trường hợp truyền vào giá trị page < 0 (không hợp lệ)
 // Input: page = -1
 // Expected: HTTP 400 Bad Request
-    //TCG04
+    //TC_ORDER_023
     @Test
     void testGetAllOrders_WithNegativePage() {
         String username = "john_doe";
@@ -164,7 +164,7 @@ class ClientOrderControllerTest {
     // Test trường hợp truyền vào giá trị size < 0 (không hợp lệ)
 // Input: size = -10
 // Expected: HTTP 400 Bad Request
-    //TCG05
+    //TC_ORDER_024
     @Test
     void testGetAllOrders_WithNegativeSize() {
         String username = "john_doe";
@@ -183,7 +183,7 @@ class ClientOrderControllerTest {
     // Test với size rất lớn (giá trị lớn hơn giới hạn bình thường, ví dụ 1000)
 // Input: size = 1000
 // Expected: HTTP 200, xử lý thành công ()
-    //TCG06
+    //TC_ORDER_025
     @Test
     void testGetAllOrders_WithLargeSize() {
         String username = "john_doe";
@@ -206,7 +206,7 @@ class ClientOrderControllerTest {
     // Test khi truyền vào sort không hợp lệ (không đúng định dạng "field,direction")
 // Input: sort = "invalidSort"
 // Expected: HTTP 400 Bad Request
-    //TCG07
+    //TC_ORDER_026
     @Test
     void testGetAllOrders_WithInvalidSort() {
         String username = "john_doe";
@@ -229,7 +229,7 @@ class ClientOrderControllerTest {
 // Input: filter = "invalidFilter"
 // Expected: HTTP 400 Bad Request
 // *Lưu ý*: Logic kiểm tra tính hợp lệ của filter nằm trong controller (không cần mock repository)
-    //TCG08
+    //TC_ORDER_027
     @Test
     void testGetAllOrders_WithInvalidFilter() {
         String username = "john_doe";
@@ -249,7 +249,7 @@ class ClientOrderControllerTest {
     // Test khi không có đơn hàng nào phù hợp với filter được truyền vào
 // Input: filter = "status:DELIVERED", dữ liệu trả về là danh sách trống
 // Expected: HTTP 200, trả về danh sách rỗng
-    //TCG09
+    //TC_ORDER_028
     @Test
     void testGetAllOrders_EmptyOrderList_WithFilter() {
         String username = "john_doe";
@@ -270,7 +270,7 @@ class ClientOrderControllerTest {
     }
 
 
-    // TCD01 - Mục tiêu: Trả về chi tiết đơn hàng khi mã hợp lệ
+    // TC_ORDER_029 - Mục tiêu: Trả về chi tiết đơn hàng khi mã hợp lệ
     // Input: code = "ORDER123"
     // Expected Output: HTTP 200 OK + ResponseEntity chứa thông tin chi tiết đơn hàng
     // Ghi chú: Đây là trường hợp thành công
@@ -292,7 +292,7 @@ class ClientOrderControllerTest {
         assertThat(response.getBody()).isEqualTo(mockResponse);
     }
 
-    // TCD02 - Mục tiêu: Ném ResourceNotFoundException khi mã không tồn tại
+    // TC_ORDER_030 - Mục tiêu: Ném ResourceNotFoundException khi mã không tồn tại
     // Input: code = "INVALID123"
     // Expected Output: Ném ResourceNotFoundException
     // Ghi chú: Trường hợp lỗi khi mã không tồn tại trong DB
@@ -313,7 +313,7 @@ class ClientOrderControllerTest {
 
     // huy don hang ton tai .
     // thanh cong
-    // TCH01
+    // TC_ORDER_031
     @Test
     void testCancelOrder_Success() {
         // Arrange
@@ -333,7 +333,7 @@ class ClientOrderControllerTest {
 
     // huy don hang khong ton tai
     // khong thanh cong
-    // TCH02
+    // TC_ORDER_032
     @Test
     void testCancelOrder_NotFound() {
         // Arrange

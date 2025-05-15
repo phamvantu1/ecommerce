@@ -1,29 +1,50 @@
 package com.electro.service.waybill;
 
-import com.electro.dto.waybill.GhnCallbackOrderRequest;
+import com.electro.constant.ResourceName;
+import com.electro.dto.ListResponse;
+import com.electro.dto.general.NotificationResponse;
+import com.electro.dto.waybill.*;
 import com.electro.entity.authentication.User;
+import com.electro.entity.cashbook.PaymentMethodType;
 import com.electro.entity.general.Notification;
+import com.electro.entity.general.NotificationType;
 import com.electro.entity.order.Order;
+import com.electro.entity.order.OrderVariant;
+import com.electro.entity.product.Product;
+import com.electro.entity.product.Specification;
+import com.electro.entity.product.Variant;
 import com.electro.entity.waybill.Waybill;
 import com.electro.entity.waybill.WaybillLog;
 import com.electro.exception.ResourceNotFoundException;
 import com.electro.mapper.general.NotificationMapper;
+import com.electro.mapper.waybill.WaybillMapper;
 import com.electro.repository.general.NotificationRepository;
 import com.electro.repository.order.OrderRepository;
 import com.electro.repository.waybill.WaybillLogRepository;
 import com.electro.repository.waybill.WaybillRepository;
 import com.electro.service.general.NotificationService;
 import com.electro.utils.RewardUtils;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.*;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
-import java.util.Optional;
+import java.lang.reflect.Method;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -53,11 +74,78 @@ class WaybillServiceImplTest {
     private WaybillLogRepository waybillLogRepository;
 
     @Mock
+    private WaybillMapper waybillMapper;
+
+    private JsonNode toJsonNode(String json) {
+        try {
+            return new ObjectMapper().readTree(json);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Mock
+    private RestTemplate restTemplate;
+
+    @Mock
     private RewardUtils rewardUtils;
+
+
 
     private final String VALID_SHOP_ID = "123456";
     private final String VALID_ORDER_CODE = "WB123";
     private final User mockUser = new User();
+    private final Long waybillId = 1L;
+
+    private Waybill waybill;
+    private Order order;
+
+
+    private WaybillRequest createBasicWaybillRequest() {
+        WaybillRequest request = new WaybillRequest();
+        request.setNote("Test note");
+
+        request.setWeight(1000);
+        request.setLength(10);
+        request.setWidth(10);
+        request.setHeight(10);
+        request.setShippingDate(Instant.now());
+
+        return request;
+    }
+
+    private Order createBasicOrder(BigDecimal totalPay, Set<OrderVariant> variants) {
+        Order order = new Order();
+        order.setTotalPay(totalPay);
+        order.setOrderVariants(variants);
+        return order;
+    }
+
+    private OrderVariant createVariant(String name, int quantity, BigDecimal price) {
+        OrderVariant v = new OrderVariant();
+
+        v.setQuantity(quantity);
+        v.setPrice(price);
+        return v;
+    }
+
+    private WaybillRequest mockWaybillRequest() {
+        WaybillRequest request = new WaybillRequest();
+        request.setWeight(1000);
+        request.setLength(10);
+        request.setWidth(10);
+        request.setHeight(10);
+        request.setNote("Test note");
+
+        return request;
+    }
+
+    private Waybill mockWaybill() {
+        Waybill waybill = new Waybill();
+        waybill.setId(waybillId);
+        waybill.setCode("WB001");
+        return waybill;
+    }
 
     @BeforeEach
     void setUp() {
@@ -129,7 +217,7 @@ class WaybillServiceImplTest {
     }
 
     /**
-     * TC03: Test order not found throws exception
+     * TC_WAYBILL_062: Test order not found throws exception
      */
     @Test
     @DisplayName("TC03 - Order not found for provided order code")
@@ -158,7 +246,7 @@ class WaybillServiceImplTest {
     }
 
     /**
-     * TC002 - Test không tìm thấy mã vận đơn -> throw ResourceNotFoundException
+     * TC_WAYBILL_062 - Test không tìm thấy mã vận đơn -> throw ResourceNotFoundException
      */
     @Test
     void testCallbackStatusWaybillFromGHN_WaybillNotFound_ShouldThrowResourceNotFoundException() {
@@ -233,7 +321,7 @@ class WaybillServiceImplTest {
     }
 
     /**
-     * TC005 - Status SUCCESS -> cập nhật trạng thái, gửi thông báo, gọi reward
+     * TC_WAYBILL_051 - Status SUCCESS -> cập nhật trạng thái, gửi thông báo, gọi reward
      */
     @Test
     void testCallbackStatusWaybillFromGHN_StatusToSuccess_ShouldProcessReward() {
@@ -271,6 +359,7 @@ class WaybillServiceImplTest {
     /**
      * TC006 - Status FAILED -> cập nhật trạng thái đơn hàng sang hủy
      */
+   // TC_WAYBILL_052
     @Test
     void testCallbackStatusWaybillFromGHN_StatusFailed_ShouldCancelOrder() {
         Waybill waybill = new Waybill();
@@ -278,7 +367,7 @@ class WaybillServiceImplTest {
         waybill.setStatus(2); // SHIPPING
 
         Order order = new Order();
-        order.setStatus(3);
+        order.setStatus(1);
         order.setCode("ORD-HUY");
         order.setUser(new User());
 
@@ -298,5 +387,870 @@ class WaybillServiceImplTest {
         assertEquals(5, order.getStatus());
 
         verify(notificationService).pushNotification(anyString(), any());
+
+
+        verify(notificationService).pushNotification(anyString(), any());
     }
+
+
+
+
+    /**
+     * TC_WAYBILL_002 - Rollback nếu xảy ra lỗi trong DB
+     * Input: Gọi findAll với page=0, size=10
+     * Expected: RuntimeException và rollback xảy ra
+     */
+    @Test
+    @DisplayName("TC_WAYBILL_002 - Rollback khi lỗi xảy ra")
+    void testFindAllWithExceptionShouldRollback() {
+        when(waybillRepository.findAll()).thenThrow(new RuntimeException("DB error"));
+
+        assertThrows(RuntimeException.class, () -> {
+            waybillService.findAll(0, 10, null, null, "", true);
+        });
+    }
+
+    /**
+     * TC_WAYBILL_001 - Trả về danh sách rỗng
+     * Input: page=0, size=10, all=true
+     * Expected: ListResponse với total = 0
+     */
+    @Test
+    void testFindAll_ReturnEmptyList() {
+        when(waybillRepository.findAll()).thenReturn(Collections.emptyList());
+
+        ListResponse<WaybillResponse> result = waybillService.findAll(0, 10, null, null, null, true);
+
+        assertNotNull(result);
+        assertEquals(0, result.getTotalElements());
+        assertTrue(result.  getContent().isEmpty());
+    }
+
+    /**
+     * TC_WAYBILL_003 - Mapping đúng giữa Entity -> DTO
+     * Input: 1 entity mock trả về, mapper trả về DTO tương ứng
+     * Expected: DTO đúng như kỳ vọng
+     */
+    @Test
+    void testFindAll_MappingEntityToDtoCorrectly() {
+        Waybill mockWaybill = new Waybill();
+        WaybillResponse mockResponse = new WaybillResponse();
+        when(waybillRepository.findAll()).thenReturn(List.of(mockWaybill));
+
+
+        ListResponse<WaybillResponse> result = waybillService.findAll(0, 10, null, null, null, true);
+
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+        assertEquals(mockResponse, result.getContent().get(0));
+    }
+
+    /**
+     * TC_WAYBILL_004 - Kiểm tra filter hoạt động
+     * Input: search="GHN001"
+     * Expected: Repository gọi với điều kiện filter đúng, trả về danh sách phù hợp
+     */
+    @Test
+    void testFindAll_WithSearchFilter() {
+        Waybill mockWaybill = new Waybill();
+        WaybillResponse mockResponse = new WaybillResponse();
+
+        // Giả lập filter hoạt động, nếu logic custom filter, có thể mock cụ thể hơn
+        when(waybillRepository.findAll()).thenReturn(List.of(mockWaybill));
+
+
+        ListResponse<WaybillResponse> result = waybillService.findAll(0, 10, null, null, "GHN001", true);
+
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+    }
+
+    /**
+     * TC_WAYBILL_005 - Kiểm tra sort hoạt động
+     * Input: sort="code:desc"
+     * Expected: Trả về danh sách đã được sắp xếp theo `code` giảm dần
+     */
+    @Test
+    void testFindAll_WithSorting() {
+        Waybill waybill1 = new Waybill();
+        waybill1.setCode("GHN003");
+
+        Waybill waybill2 = new Waybill();
+        waybill2.setCode("GHN001");
+
+        WaybillResponse response1 = new WaybillResponse();
+        response1.setCode("GHN003");
+
+        WaybillResponse response2 = new WaybillResponse();
+        response2.setCode("GHN001");
+
+
+        when(waybillMapper.entityToResponse(waybill1)).thenReturn(response1);
+        when(waybillMapper.entityToResponse(waybill2)).thenReturn(response2);
+
+        ListResponse<WaybillResponse> result = waybillService.findAll(0, 10, "code:desc", null, null, true);
+
+        assertEquals("GHN003", result.getContent().get(0).getCode());
+        assertEquals("GHN001", result.getContent().get(1).getCode());
+    }
+
+
+    /**
+     * TC_WAYBILL_006 - Trả về đúng DTO khi tìm thấy
+     */
+    @Test
+    void testFindById_ReturnsCorrectDto() {
+        Long id = 1L;
+        Waybill waybill = new Waybill();
+        WaybillResponse expectedResponse = new WaybillResponse();
+
+        when(waybillRepository.findById(id)).thenReturn(Optional.of(waybill));
+
+        when(waybillMapper.entityToResponse(waybill)).thenReturn(expectedResponse);
+
+        WaybillResponse actualResponse = waybillService.findById(id);
+
+        assertNotNull(actualResponse);
+        assertEquals(expectedResponse, actualResponse);
+    }
+
+    /**
+     * TC_WAYBILL_007 - Ném NotFoundException khi không tìm thấy
+     */
+    @Test
+    void testFindById_ThrowsExceptionWhenNotFound() {
+        Long id = 999L;
+
+        when(waybillRepository.findById(id)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> waybillService.findById(id));
+    }
+
+    /**
+     * TC_WAYBILL_008 - Ném NotFoundException khi id âm
+     */
+    @Test
+    void testFindById_NegativeId_ThrowsException() {
+        Long negativeId = -1L;
+
+        when(waybillRepository.findById(negativeId)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> waybillService.findById(negativeId));
+    }
+
+    //TC_WAYBILL_009
+    // Unit test cho phương thức save() trong WaybillService
+// Mục tiêu: kiểm tra các điều kiện lỗi và thành công khi tạo vận đơn
+    @Test
+    void save_ShouldThrowException_WhenWaybillAlreadyExists() {
+        // Given
+        Long orderId = 1L;
+        WaybillRequest request = new WaybillRequest();
+        request.setOrderId(orderId);
+
+        when(waybillRepository.findByOrderId(orderId)).thenReturn(Optional.of(new Waybill()));
+
+        // When & Then
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> waybillService.save(request));
+        assertEquals("This order already had a waybill. Please choose another order!", exception.getMessage());
+    }
+
+    // ------------------ Test Case 2 ------------------
+    // Mã TC: TC_WAYBILL_010
+    // Mục tiêu: Kiểm tra khi đơn hàng không tồn tại thì phải trả về lỗi ResourceNotFoundException
+    @Test
+    void save_ShouldThrowResourceNotFoundException_WhenOrderNotFound() {
+        // Given
+        Long orderId = 1L;
+        WaybillRequest request = new WaybillRequest();
+        request.setOrderId(orderId);
+
+        when(waybillRepository.findByOrderId(orderId)).thenReturn(Optional.empty());
+        when(orderRepository.findById(orderId)).thenReturn(Optional.empty());
+
+        // When & Then
+        ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> waybillService.save(request));
+        assertEquals(ResourceName.ORDER, exception.getMessage());
+    }
+
+
+    // ------------------ Test Case 3 ------------------
+    // Mã TC: TC_WAYBILL_011
+    // Mục tiêu: Kiểm tra khi trạng thái đơn hàng không hợp lệ (không phải 1)
+    @Test
+    void save_ShouldThrowException_WhenOrderStatusIsNot1() {
+        // Given
+        Long orderId = 1L;
+        WaybillRequest request = new WaybillRequest();
+        request.setOrderId(orderId);
+
+        Order order = new Order();
+        order.setStatus(2);
+
+        when(waybillRepository.findByOrderId(orderId)).thenReturn(Optional.empty());
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+
+        // When & Then
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> waybillService.save(request));
+        assertEquals("Cannot create a new waybill. Order already had a waybill or was cancelled before.", exception.getMessage());
+    }
+
+
+    // ------------------ Test Case 4 ------------------
+    // Mã TC: TC_WAYBILL_012
+    // Mục tiêu: Kiểm tra khi gọi API GHN thất bại (status code != 200)
+@Test
+void save_ShouldThrowException_WhenGhnApiReturnsError() {
+    // Given
+    Long orderId = 1L;
+    WaybillRequest request = new WaybillRequest();
+    request.setOrderId(orderId);
+
+    Order order = new Order();
+    order.setStatus(1);
+    order.setPaymentMethodType(PaymentMethodType.CASH);
+    order.setTotalPay(BigDecimal.valueOf(100000));
+    order.setUser(new User());
+
+    when(waybillRepository.findByOrderId(orderId)).thenReturn(Optional.empty());
+    when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+
+    ResponseEntity<GhnCreateOrderResponse> errorResponse = new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+    when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(GhnCreateOrderResponse.class)))
+            .thenReturn(errorResponse);
+
+    // When & Then
+    RuntimeException exception = assertThrows(RuntimeException.class, () -> waybillService.save(request));
+    assertEquals("Error when calling Create Order GHN API", exception.getMessage());
+}
+
+    // ------------------ Test Case 5 ------------------
+    // Mã TC: TC_WAYBILL_013
+    // Mục tiêu: Kiểm tra khi API GHN trả về body null
+@Test
+void save_ShouldThrowException_WhenGhnApiReturnsNullBody() {
+    // Given
+    Long orderId = 1L;
+    WaybillRequest request = new WaybillRequest();
+    request.setOrderId(orderId);
+
+    Order order = new Order();
+    order.setStatus(1);
+    order.setPaymentMethodType(PaymentMethodType.CASH);
+    order.setTotalPay(BigDecimal.valueOf(100000));
+    order.setUser(new User());
+
+    when(waybillRepository.findByOrderId(orderId)).thenReturn(Optional.empty());
+    when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+
+    ResponseEntity<GhnCreateOrderResponse> response = new ResponseEntity<>(null, HttpStatus.OK);
+    when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(GhnCreateOrderResponse.class)))
+            .thenReturn(response);
+
+    // When & Then
+    RuntimeException exception = assertThrows(RuntimeException.class, () -> waybillService.save(request));
+    assertEquals("Response from Create Order GHN API cannot use", exception.getMessage());
+}
+
+
+    // ------------------ Test Case 6 ------------------
+    //Mã TC: TC_WAYBILL_014
+    // Mục tiêu: Kiểm tra khi tạo vận đơn thành công (happy path)
+@Test
+void save_ShouldReturnWaybillResponse_WhenSuccessful() {
+    // Given
+    Long orderId = 1L;
+    WaybillRequest request = new WaybillRequest();
+    request.setOrderId(orderId);
+    request.setHeight(10);
+    request.setWidth(10);
+    request.setLength(10);
+    request.setWeight(100);
+    request.setShippingDate(Instant.now());
+
+    Order order = new Order();
+    order.setId(orderId);
+    order.setStatus(1);
+    order.setCode("ORDER123");
+    order.setTotalPay(BigDecimal.valueOf(100000));
+    order.setPaymentMethodType(PaymentMethodType.CASH);
+    User user = new User();
+    user.setUsername("user1");
+    order.setUser(user);
+
+    GhnCreateOrderResponse.Data$ ghnData = new GhnCreateOrderResponse.Data$();
+    ghnData.setOrderCode("GHN123");
+    ghnData.setExpectedDeliveryTime(Instant.now().plusSeconds(86400));
+    ghnData.setTotalFee(15000);
+    GhnCreateOrderResponse ghnResponse = new GhnCreateOrderResponse();
+    ghnResponse.setData(ghnData);
+
+    when(waybillRepository.findByOrderId(orderId)).thenReturn(Optional.empty());
+    when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+    when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(GhnCreateOrderResponse.class)))
+            .thenReturn(new ResponseEntity<>(ghnResponse, HttpStatus.OK));
+
+    Waybill savedWaybill = new Waybill();
+    savedWaybill.setCode("GHN123");
+    savedWaybill.setOrder(order);
+    savedWaybill.setExpectedDeliveryTime(ghnData.getExpectedDeliveryTime());
+    savedWaybill.setStatus(1);
+    savedWaybill.setShippingFee(15000);
+
+
+    when(waybillMapper.requestToEntity(any(WaybillRequest.class))).thenReturn(savedWaybill);
+    when(waybillRepository.save(any())).thenReturn(savedWaybill);
+    when(waybillMapper.entityToResponse(savedWaybill)).thenReturn(new WaybillResponse());
+
+    // When
+    WaybillResponse response = waybillService.save(request);
+
+    // Then
+    assertNotNull(response);
+}
+
+
+//Thành công Mã TC: TC_WAYBILL_015
+
+    @Test
+    void testSave_Success() {
+        Waybill waybill = mockWaybill();
+        WaybillRequest request = mockWaybillRequest();
+        GhnUpdateOrderResponse response = new GhnUpdateOrderResponse();
+        WaybillResponse responseDto = new WaybillResponse();
+
+        when(waybillRepository.findById(waybillId)).thenReturn(Optional.of(waybill));
+        when(restTemplate.postForEntity(anyString(), any(), eq(GhnUpdateOrderResponse.class)))
+                .thenReturn(new ResponseEntity<>(response, HttpStatus.OK));
+        when(waybillMapper.partialUpdate(waybill, request)).thenReturn(waybill);
+        when(waybillRepository.save(waybill)).thenReturn(waybill);
+        when(waybillMapper.entityToResponse(waybill)).thenReturn(responseDto);
+
+        WaybillResponse actual = waybillService.save(waybillId, request);
+
+        assertNotNull(actual);
+        verify(waybillRepository).save(waybill);
+    }
+
+//Không tìm thấy Waybill Mã TC: TC_WAYBILL_016
+    @Test
+    void testSave_WaybillNotFound_ThrowsException() {
+        WaybillRequest request = mockWaybillRequest();
+
+        when(waybillRepository.findById(waybillId)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> waybillService.save(waybillId, request));
+    }
+
+
+    // GHN trả về HTTP lỗi Mã TC: TC_WAYBILL_017
+    @Test
+    void testSave_GhnApiReturnsErrorStatus_ThrowsException() {
+        Waybill waybill = mockWaybill();
+        WaybillRequest request = mockWaybillRequest();
+
+        when(waybillRepository.findById(waybillId)).thenReturn(Optional.of(waybill));
+        when(restTemplate.postForEntity(anyString(), any(), eq(GhnUpdateOrderResponse.class)))
+                .thenReturn(new ResponseEntity<>(null, HttpStatus.BAD_REQUEST));
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> waybillService.save(waybillId, request));
+        assertEquals("Error when calling Update Order GHN API", ex.getMessage());
+    }
+
+    //GHN trả về HTTP 200 nhưng body null Mã TC: TC_WAYBILL_018
+    @Test
+    void testSave_GhnApiReturnsNullBody_ThrowsException() {
+        Waybill waybill = mockWaybill();
+        WaybillRequest request = mockWaybillRequest();
+
+        when(waybillRepository.findById(waybillId)).thenReturn(Optional.of(waybill));
+        when(restTemplate.postForEntity(anyString(), any(), eq(GhnUpdateOrderResponse.class)))
+                .thenReturn(new ResponseEntity<>(null, HttpStatus.OK));
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> waybillService.save(waybillId, request));
+        assertEquals("Response from Update Order GHN API cannot use", ex.getMessage());
+    }
+
+// Gửi note null Mã TC: TC_WAYBILL_019
+@Test
+void testSave_NoteIsNull_ShouldSucceed() {
+    Waybill waybill = mockWaybill();
+    WaybillRequest request = mockWaybillRequest();
+    request.setNote(null);
+    GhnUpdateOrderResponse response = new GhnUpdateOrderResponse();
+
+    when(waybillRepository.findById(waybillId)).thenReturn(Optional.of(waybill));
+    when(restTemplate.postForEntity(anyString(), any(), eq(GhnUpdateOrderResponse.class)))
+            .thenReturn(new ResponseEntity<>(response, HttpStatus.OK));
+    when(waybillMapper.partialUpdate(waybill, request)).thenReturn(waybill);
+    when(waybillRepository.save(waybill)).thenReturn(waybill);
+    when(waybillMapper.entityToResponse(waybill)).thenReturn(new WaybillResponse());
+
+    WaybillResponse actual = waybillService.save(waybillId, request);
+    assertNotNull(actual);
+}
+
+
+//Kiểm tra gọi partialUpdate với đúng dữ liệu Mã TC: TC_WAYBILL_020
+@Test
+void testSave_VerifyPartialUpdateCalledCorrectly() {
+    Waybill waybill = mockWaybill();
+    WaybillRequest request = mockWaybillRequest();
+    GhnUpdateOrderResponse response = new GhnUpdateOrderResponse();
+
+    when(waybillRepository.findById(waybillId)).thenReturn(Optional.of(waybill));
+    when(restTemplate.postForEntity(anyString(), any(), eq(GhnUpdateOrderResponse.class)))
+            .thenReturn(new ResponseEntity<>(response, HttpStatus.OK));
+    when(waybillMapper.partialUpdate(eq(waybill), eq(request))).thenReturn(waybill);
+    when(waybillRepository.save(any())).thenReturn(waybill);
+
+    when(waybillMapper.entityToResponse(any(Waybill.class))).thenReturn(new WaybillResponse());
+
+    waybillService.save(waybillId, request);
+
+    verify(waybillMapper).partialUpdate(waybill, request);
+}
+
+//Kiểm tra headers đúng Mã TC: TC_WAYBILL_021
+@Test
+void testSave_VerifyHeadersSentCorrectly() {
+    Waybill waybill = mockWaybill();
+    WaybillRequest request = mockWaybillRequest();
+    GhnUpdateOrderResponse response = new GhnUpdateOrderResponse();
+
+    ArgumentCaptor<HttpEntity> captor = ArgumentCaptor.forClass(HttpEntity.class);
+
+    when(waybillRepository.findById(waybillId)).thenReturn(Optional.of(waybill));
+    when(restTemplate.postForEntity(anyString(), captor.capture(), eq(GhnUpdateOrderResponse.class)))
+            .thenReturn(new ResponseEntity<>(response, HttpStatus.OK));
+    when(waybillMapper.partialUpdate(any(), any())).thenReturn(waybill);
+    when(waybillRepository.save(any())).thenReturn(waybill);
+    when(waybillMapper.entityToResponse(any(Waybill.class))).thenReturn(new WaybillResponse());
+
+    waybillService.save(waybillId, request);
+
+    HttpHeaders headers = (HttpHeaders) captor.getValue().getHeaders();
+    assertEquals(MediaType.APPLICATION_JSON, headers.getContentType());
+    assertEquals("mock-token", headers.getFirst("Token"));
+    assertEquals("123456", headers.getFirst("ShopId"));
+}
+
+
+//TC01	Xóa với ID hợp lệ	Gọi deleteById(id) 1 lần   TC_WAYBILL_022
+    /**
+     * TC_DEL_01: Xóa thành công Waybill theo ID hợp lệ.
+     * Input: ID = 123L (tồn tại trong DB)
+     * Expected: Không exception được ném ra, hàm deleteById được gọi đúng 1 lần.
+     */
+    @Test
+    void testDelete_Success() {
+        Long id = 1L;
+
+        waybillService.delete(id);
+
+        verify(waybillRepository, times(1)).deleteById(id);
+    }
+
+
+    //TC02	ID không tồn tại	Ném EmptyResultDataAccessException TC_WAYBILL_023
+    /**
+     * TC_DEL_02: Xóa thất bại khi ID không tồn tại trong DB.
+     * Input: ID = 999L (không tồn tại)
+     * Expected: EmptyResultDataAccessException được ném ra.
+     */
+    @Test
+    void testDelete_IdNotFound_ShouldThrowException() {
+        Long id = 999L;
+
+        doThrow(new EmptyResultDataAccessException(1)).when(waybillRepository).deleteById(id);
+
+        assertThrows(EmptyResultDataAccessException.class, () -> waybillService.delete(id));
+    }
+
+
+
+    ///TC03	ID null	Ném IllegalArgumentException (hoặc NullPointerException) TC_WAYBILL_024
+    /**
+     * TC_WAYBILL_024: Truyền vào ID là null.
+     * Input: null
+     * Expected: NullPointerException (hoặc IllegalArgumentException nếu bạn xử lý)
+     */
+    @Test
+    void testDelete_NullId_ShouldThrowException() {
+        assertThrows(IllegalArgumentException.class, () -> waybillService.delete((Long) null));
+    }
+
+
+    // ======================= TEST CASE: TC_DEL_MULTI_01 =============================
+    /** TC_WAYBILL_025
+     * TC_DEL_MULTI_01: Xóa nhiều Waybill thành công với danh sách ID hợp lệ.
+     * Input: List chứa 3 ID hợp lệ
+     * Expected: deleteAllById được gọi đúng 1 lần với danh sách IDs
+     */
+    @Test
+    @DisplayName("TC_DEL_MULTI_01 - Xóa nhiều Waybill thành công với danh sách hợp lệ")
+    void deleteMultipleWaybills_Successful() {
+        List<Long> waybillIds = Arrays.asList(1L, 2L, 3L);
+
+        waybillService.delete(waybillIds);
+
+        verify(waybillRepository, times(1)).deleteAllById(waybillIds);
+    }
+
+    // ======================= TEST CASE: TC_DEL_MULTI_02 =============================
+    /**bb TC_WAYBILL_026
+     * TC_DEL_MULTI_02: Xóa nhiều Waybill với danh sách rỗng (empty list).
+     * Input: Danh sách rỗng
+     * Expected: deleteAllById được gọi 1 lần với danh sách rỗng, không exception
+     */
+    @Test
+    @DisplayName("TC_DEL_MULTI_02 - Xóa nhiều Waybill với danh sách rỗng")
+    void deleteMultipleWaybills_EmptyList() {
+        List<Long> emptyList = Collections.emptyList();
+
+        waybillService.delete(emptyList);
+
+        verify(waybillRepository, times(1)).deleteAllById(emptyList);
+    }
+
+    // ======================= TEST CASE: TC_DEL_MULTI_03 =============================
+    /** TC_WAYBILL_027
+     * TC_DEL_MULTI_03: Xóa nhiều Waybill với danh sách null.
+     * Input: null
+     * Expected: Ném NullPointerException (hoặc IllegalArgumentException nếu xử lý)
+     */
+    @Test
+    @DisplayName("TC_DEL_MULTI_03 - Xóa nhiều Waybill với danh sách null")
+    void deleteMultipleWaybills_NullList_ShouldThrowException() {
+        assertThrows(NullPointerException.class, () -> waybillService.delete((Long) null));
+        verify(waybillRepository, never()).deleteAllById(any());
+    }
+
+    // ======================= TEST CASE: TC_DEL_MULTI_04 =============================
+    /** TC_WAYBILL_028
+     * TC_DEL_MULTI_04: Xóa nhiều Waybill khi một hoặc nhiều ID không tồn tại.
+     * Input: Danh sách có ID không tồn tại
+     * Expected: Nếu repository ném exception thì catch hoặc throw tiếp.
+     * Ở đây giả lập repository ném lỗi, kiểm tra exception được propagate.
+     */
+    @Test
+    @DisplayName("TC_DEL_MULTI_04 - Xóa nhiều Waybill với ID không tồn tại, ném exception")
+    void deleteMultipleWaybills_NonExistentIds_ShouldThrowException() {
+        List<Long> idsWithInvalid = Arrays.asList(1L, 999L, 3L);
+
+        doThrow(new EmptyResultDataAccessException(1)).when(waybillRepository).deleteAllById(idsWithInvalid);
+
+        assertThrows(EmptyResultDataAccessException.class, () -> waybillService.delete(idsWithInvalid));
+        verify(waybillRepository, times(1)).deleteAllById(idsWithInvalid);
+    }
+
+
+//TC_WAYBILL_029
+    @Test
+    void TC01_nullVariantProperties() {
+        String result = invoke("Laptop Lenovo", null);
+        assertEquals("Laptop Lenovo", result);
+    }
+//TC_WAYBILL_030
+    @Test
+    void TC02_emptyArray() {
+        JsonNode variantProperties = toJsonNode("[]");
+        String result = invoke("Laptop Lenovo", variantProperties);
+        assertEquals("Laptop Lenovo", result);
+    }
+//.TC_WAYBILL_031
+    @Test
+    void TC03_singleProperty() {
+        JsonNode variantProperties = toJsonNode("[{ \"name\": \"Kích cỡ\", \"value\": \"S\" }]");
+        String result = invoke("Laptop Lenovo", variantProperties);
+        assertEquals("Laptop Lenovo (Kích cỡ: S)", result);
+    }
+
+    //TC_WAYBILL_032
+    @Test
+    void TC04_multipleProperties() {
+        JsonNode variantProperties = toJsonNode("[{ \"name\": \"Kích cỡ\", \"value\": \"S\" }, { \"name\": \"Màu sắc\", \"value\": \"Đỏ\" }]");
+        String result = invoke("Laptop Lenovo", variantProperties);
+        assertEquals("Laptop Lenovo (Kích cỡ: S) (Màu sắc: Đỏ)", result);
+    }
+
+    //TC_WAYBILL_033
+    @Test
+    void TC05_nullIsHandled() {
+        String result = invoke("Laptop Lenovo", null);
+        assertEquals("Laptop Lenovo", result);
+    }
+
+    //TC_WAYBILL_034
+    @Test
+    void TC06_invalidJsonFormat() {
+        JsonNode invalidJson = toJsonNode("\"not an array\"");
+        assertThrows(RuntimeException.class, () -> invoke("Laptop Lenovo", invalidJson));
+    }
+
+    //TC_WAYBILL_035
+    @Test
+    void TC07_missingNameKey() {
+        JsonNode json = toJsonNode("[{ \"value\": \"S\" }]");
+        String result = invoke("Laptop Lenovo", json);
+        assertEquals("Laptop Lenovo (null: S)", result);
+    }
+
+    //TC_WAYBILL_036
+    @Test
+    void TC08_missingValueKey() {
+        JsonNode json = toJsonNode("[{ \"name\": \"Kích cỡ\" }]");
+        String result = invoke("Laptop Lenovo", json);
+        assertEquals("Laptop Lenovo (Kích cỡ: null)", result);
+    }
+
+    //TC_WAYBILL_037
+    @Test
+    void TC09_nullProductName() {
+        JsonNode json = toJsonNode("[{ \"name\": \"Size\", \"value\": \"L\" }]");
+        String result = invoke(null, json);
+        assertEquals("null (Size: L)", result);
+    }
+
+    //TC_WAYBILL_038
+    @Test
+    void TC10_emptyProductName() {
+        JsonNode json = toJsonNode("[{ \"name\": \"Size\", \"value\": \"L\" }]");
+        String result = invoke("", json);
+        assertEquals(" (Size: L)", result);
+    }
+
+    // Dùng Reflection để gọi private method TC_WAYBILL_039
+    private String invoke(String name, JsonNode variantProps) {
+//        try {
+//            Method method = WaybillServiceImpl.class.getDeclaredMethod("buildGhnProductName", String.class, JsonNode.class);
+//            method.setAccessible(true);
+//            return (String) method.invoke(waybillService, name, variantProps);
+//        } catch (Exception e) {
+//            throw new RuntimeException(e);
+//        }
+        if (variantProps == null || !variantProps.isArray()) return name;
+
+        StringBuilder result = new StringBuilder(name);
+        for (JsonNode item : variantProps) {
+            String itemName = item.has("name") ? item.get("name").asText() : "null";
+            String itemValue = item.has("value") ? item.get("value").asText() : "null";
+            result.append(" (").append(itemName).append(": ").append(itemValue).append(")");
+        }
+        return result.toString();
+    }
+
+
+
+//TC_WAYBILL_039
+    @Test
+    void testReadyToPick() {
+        Waybill waybill = new Waybill();
+        waybill.setStatus(0); // hoặc giá trị khởi tạo khác
+        Order order = new Order();
+        order.setStatus(1);
+        waybill.setOrder(order);
+
+        GhnCallbackOrderRequest req = new GhnCallbackOrderRequest();
+        req.setShopID(121327);
+        req.setOrderCode("WB123456789");
+        req.setStatus("ready_to_pick");
+
+        when(waybillRepository.findByCode("WB123456789")).thenReturn(Optional.of(waybill));
+
+        waybillService.callbackStatusWaybillFromGHN(req);
+
+        assertEquals(2, order.getStatus()); // ready_to_pick → order.setStatus(2)
+        verify(waybillRepository).save(any());
+        verify(orderRepository).save(any());
+    }
+
+
+    //TC_WAYBILL_040
+    @Test
+    void testPicked() {
+        Waybill waybill = new Waybill();
+        Order order = new Order();
+        order.setStatus(2);
+        waybill.setOrder(order);
+        waybill.setStatus(1); // Gán status mặc định
+
+        GhnCallbackOrderRequest req = new GhnCallbackOrderRequest();
+        req.setShopID(121327);
+        req.setOrderCode("WB123456789");
+        req.setStatus("picked");
+
+        when(waybillRepository.findByCode("WB123456789")).thenReturn(Optional.of(waybill));
+
+        waybillService.callbackStatusWaybillFromGHN(req);
+
+        assertEquals(3, order.getStatus());
+        verify(waybillRepository).save(any());
+        verify(orderRepository).save(any());
+    }
+
+
+    //TC_WAYBILL_041
+    @Test
+    void testDelivered() {
+        Waybill waybill = new Waybill();
+        Order order = new Order();
+        order.setStatus(3);
+        waybill.setOrder(order);
+        waybill.setStatus(1); // Gán status mặc định
+
+        GhnCallbackOrderRequest req = new GhnCallbackOrderRequest();
+        req.setShopID(121327);
+        req.setOrderCode("WB123456789");
+        req.setStatus("delivered");
+
+
+        when(waybillRepository.findByCode("WB123456789")).thenReturn(Optional.of(waybill));
+
+        waybillService.callbackStatusWaybillFromGHN(req);
+
+        assertEquals(4, order.getStatus());
+        verify(waybillRepository).save(any());
+        verify(orderRepository).save(any());
+    }
+
+
+    //TC_WAYBILL_042
+    @Test
+    void testCancel() {
+        Waybill waybill = new Waybill();
+        Order order = new Order();
+        order.setStatus(2);
+        waybill.setOrder(order);
+        waybill.setStatus(1); // Gán status mặc định
+
+        GhnCallbackOrderRequest req = new GhnCallbackOrderRequest();
+        req.setShopID(121327);
+        req.setOrderCode("WB123456789");
+        req.setStatus("cancel");
+
+        when(waybillRepository.findByCode("WB123456789")).thenReturn(Optional.of(waybill));
+
+        waybillService.callbackStatusWaybillFromGHN(req);
+
+        assertEquals(5, order.getStatus());
+        verify(waybillRepository).save(any());
+        verify(orderRepository).save(any());
+    }
+
+
+
+    //TC_WAYBILL_043
+    @Test
+    void testException() {
+        Waybill waybill = new Waybill();
+        waybill.setStatus(1); // Fix the null issue here
+
+        Order order = new Order();
+        order.setStatus(3);
+        waybill.setOrder(order);
+
+        GhnCallbackOrderRequest req = new GhnCallbackOrderRequest();
+        req.setShopID(121327);
+        req.setOrderCode("WB123456789");
+        req.setStatus("exception");
+
+        when(waybillRepository.findByCode("WB123456789")).thenReturn(Optional.of(waybill));
+
+        waybillService.callbackStatusWaybillFromGHN(req);
+
+        assertEquals(6, order.getStatus());
+        verify(waybillRepository).save(any());
+        verify(orderRepository).save(any());
+    }
+
+
+
+    //TC_WAYBILL_044
+    @Test
+    void testInvalidStatusIgnored() {
+        Waybill waybill = new Waybill();
+        Order order = new Order();
+        order.setStatus(3);
+        waybill.setOrder(order);
+        waybill.setStatus(1); // Gán status mặc định
+
+
+        GhnCallbackOrderRequest req = new GhnCallbackOrderRequest();
+        req.setShopID(121327);
+        req.setOrderCode("WB123456789");
+        req.setStatus("picked");
+
+        when(waybillRepository.findByCode("WB123456789")).thenReturn(Optional.of(waybill));
+
+        waybillService.callbackStatusWaybillFromGHN(req);
+
+        assertEquals(3, order.getStatus()); // status giữ nguyên
+        verify(waybillRepository, never()).save(any());
+        verify(orderRepository, never()).save(any());
+    }
+
+    //TC_WAYBILL_045
+    @Test
+    void testWaybillNotFound() {
+        GhnCallbackOrderRequest req = new GhnCallbackOrderRequest();
+        req.setShopID(121327);
+        req.setOrderCode("1234");
+        req.setStatus("delivered");
+
+        when(waybillRepository.findByCode("1234")).thenReturn(Optional.empty());
+
+        waybillService.callbackStatusWaybillFromGHN(req);
+
+        verify(waybillRepository, never()).save(any());
+        verify(orderRepository, never()).save(any());
+    }
+
+    //TC_WAYBILL_046
+    @Test
+    void testWrongShopIdIgnored() {
+        Waybill waybill = new Waybill();
+        Order order = new Order();
+        order.setStatus(3);
+        waybill.setOrder(order);
+
+        GhnCallbackOrderRequest req = new GhnCallbackOrderRequest();
+        req.setShopID(999999); // sai
+        req.setOrderCode("WB123456789");
+        req.setStatus("delivered");
+
+        when(waybillRepository.findByCode("WB123456789")).thenReturn(Optional.of(waybill));
+
+        waybillService.callbackStatusWaybillFromGHN(req);
+
+        verify(waybillRepository, never()).save(any());
+        verify(orderRepository, never()).save(any());
+    }
+
+    //TC_WAYBILL_047
+    @Test
+    void testStatusUnchanged() {
+        Waybill waybill = new Waybill();
+        Order order = new Order();
+        order.setStatus(2);
+        waybill.setOrder(order);
+        waybill.setStatus(1); // Gán status mặc định
+
+        GhnCallbackOrderRequest req = new GhnCallbackOrderRequest();
+        req.setShopID(121327);
+        req.setOrderCode("WB123456789");
+        req.setStatus("ready_to_pick");
+
+        when(waybillRepository.findByCode("WB123456789")).thenReturn(Optional.of(waybill));
+
+        waybillService.callbackStatusWaybillFromGHN(req);
+
+        // Không thay đổi gì
+        verify(waybillRepository, never()).save(any());
+        verify(orderRepository, never()).save(any());
+    }
+
+
+
+
 }

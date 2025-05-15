@@ -32,7 +32,7 @@ class OrderControllerTest {
      * Ghi chú: Đảm bảo controller hoạt động đúng chức năng
      */
 
-    // TCC01
+    // TC_ORDER_001
     @Test
     void TC01_cancelOrder_ShouldCallServiceWithCorrectCode() {
         // Arrange
@@ -51,7 +51,7 @@ class OrderControllerTest {
      * Expected Output: ResponseEntity có HttpStatus = OK
      * Ghi chú: Đảm bảo API phản hồi đúng status code
      */
-    // TCC02
+    // TC_ORDER_002
     @Test
     void TC02_cancelOrder_ShouldReturnHttpStatusOk() {
         // Arrange
@@ -70,7 +70,7 @@ class OrderControllerTest {
      * Expected Output: response body là ObjectNode rỗng -> {}
      * Ghi chú: Vì controller trả về new ObjectNode(JsonNodeFactory.instance)
      */
-    // TCC03
+    // TC_ORDER_003
     @Test
     void TC03_cancelOrder_ShouldReturnEmptyJsonBody() {
         // Arrange
@@ -91,7 +91,7 @@ class OrderControllerTest {
      * Input: ""
      * Expected Output: IllegalArgumentException hoặc custom exception
      */
-    // TCC04
+    // TC_ORDER_004
     @Test
     @DisplayName("TC04 - cancelOrder với mã đơn hàng rỗng")
     void TC01_cancelOrder_withEmptyCode_shouldThrowException() {
@@ -116,7 +116,7 @@ class OrderControllerTest {
      * Input: "@#%!INVALID"
      * Expected Output: IllegalArgumentException hoặc custom exception
      */
-    // TCC05
+    // TC_ORDER_005
     @Test
     @DisplayName("TC05 - cancelOrder với mã có ký tự đặc biệt")
     void TC02_cancelOrder_withSpecialChars_shouldThrowException() {
@@ -140,7 +140,7 @@ class OrderControllerTest {
      * Input: null
      * Expected Output: NullPointerException hoặc custom exception
      */
-    // TCC06
+    // TC_ORDER_006
     @Test
     @DisplayName("TC06 - cancelOrder với mã null")
     void TC03_cancelOrder_withNullCode_shouldThrowException() {

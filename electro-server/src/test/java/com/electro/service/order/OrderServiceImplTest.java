@@ -1,14 +1,20 @@
 package com.electro.service.order;
 
 import com.electro.dto.waybill.GhnCancelOrderResponse;
+import com.electro.dto.waybill.GhnCreateOrderResponse;
+import com.electro.dto.waybill.WaybillRequest;
+import com.electro.dto.waybill.WaybillResponse;
+import com.electro.entity.cashbook.PaymentMethodType;
 import com.electro.entity.order.Order;
 import com.electro.entity.waybill.Waybill;
 import com.electro.entity.waybill.WaybillLog;
 import com.electro.exception.ResourceNotFoundException;
+import com.electro.mapper.waybill.WaybillMapper;
 import com.electro.repository.order.OrderRepository;
 import com.electro.repository.waybill.WaybillRepository;
 import com.electro.repository.waybill.WaybillLogRepository;
 import com.electro.config.payment.paypal.PayPalHttpClient;
+import com.electro.service.waybill.WaybillServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -16,14 +22,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.lang.reflect.Field;
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -46,6 +51,12 @@ class OrderServiceImplTest {
 
     @Mock
     private RestTemplate restTemplate;
+
+    @InjectMocks
+    private WaybillServiceImpl waybillService;
+
+    @Mock
+    private WaybillMapper waybillMapper;
 
     @InjectMocks
     private OrderServiceImpl orderService;
@@ -80,7 +91,7 @@ class OrderServiceImplTest {
 
     // Test khi không tìm thấy đơn hàng theo mã code
 // => Phải ném ra ResourceNotFoundException với thông điệp phù hợp
-//TCCC01
+//TC_ORDER_014
     @Test
     void testCancelOrder_OrderNotFound_ShouldThrowException() {
         // Mô phỏng khi không tìm thấy đơn hàng với mã code "ORD123"
@@ -101,7 +112,7 @@ class OrderServiceImplTest {
     // GHN tra ve loi
     // Test trường hợp GHN API trả về lỗi HTTP (500 INTERNAL_SERVER_ERROR)
 // => Phải ném RuntimeException với thông điệp báo lỗi API
-//TCCC02
+//TC_ORDER_015
     @Test
     void testCancelOrder_GHNApiError_ShouldThrowRuntimeException() {
         // Mô phỏng khi tìm thấy đơn hàng và vận đơn
@@ -127,7 +138,7 @@ class OrderServiceImplTest {
     }
 
 
-    //TCCC03
+    //TC_ORDER_016
     // don dang giao khong the huy
     // Test khi đơn hàng đang trong trạng thái giao (status >= 3)
 // => Không được phép hủy, phải ném RuntimeException với thông điệp tương ứng
@@ -148,7 +159,7 @@ class OrderServiceImplTest {
     }
 
 
-    //TCCC04
+    //TC_ORDER_017
     // tu choi khong co waybill
     // Test hủy đơn hàng thành công khi không có vận đơn
 // => Chỉ cập nhật trạng thái đơn hàng thành 5 (Hủy), không gọi GHN API
@@ -172,7 +183,7 @@ class OrderServiceImplTest {
     }
 
 
-    //TCCC05
+    //TC_ORDER_018
     // Test hủy đơn hàng thành công có kèm vận đơn, GHN trả về kết quả thành công
 // => Cập nhật trạng thái đơn hàng, trạng thái vận đơn, và ghi log vận đơn
 
@@ -215,7 +226,7 @@ class OrderServiceImplTest {
 // Test GHN trả về kết quả không thành công (result = false)
 // => Chỉ cập nhật trạng thái đơn hàng thành 5, không cập nhật vận đơn, không ghi log
 
-    //TCCC06
+    //TC_ORDER_019
     @Test
     void testCancelOrder_GhnResponseFalse() {
         String code = "74UJIRYKI1NN";
@@ -253,6 +264,90 @@ class OrderServiceImplTest {
         verify(waybillRepository, never()).save(waybill);
         verify(waybillLogRepository, never()).save(any());
     }
+
+
+    @Test
+    void testFindById_Success() {
+        Waybill waybill = new Waybill();
+        waybill.setId(1L);
+        WaybillResponse response = new WaybillResponse();
+
+        when(waybillRepository.findById(1L)).thenReturn(Optional.of(waybill));
+        when(waybillMapper.entityToResponse(waybill)).thenReturn(response);
+
+        WaybillResponse result = waybillService.findById(1L);
+        assertNotNull(result);
+        verify(waybillRepository).findById(1L);
+        verify(waybillMapper).entityToResponse(waybill);
+    }
+
+    @Test
+    void testFindById_NotFound() {
+        when(waybillRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> waybillService.findById(1L));
+    }
+
+    @Test
+    void testSave_ExistingWaybill_ThrowsException() {
+        WaybillRequest request = new WaybillRequest();
+        request.setOrderId(1L);
+        when(waybillRepository.findByOrderId(1L)).thenReturn(Optional.of(new Waybill()));
+
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> waybillService.save(request));
+        assertTrue(exception.getMessage().contains("already had a waybill"));
+    }
+
+    @Test
+    void testSave_OrderNotFound_ThrowsException() {
+        WaybillRequest request = new WaybillRequest();
+        request.setOrderId(1L);
+        when(waybillRepository.findByOrderId(1L)).thenReturn(Optional.empty());
+        when(orderRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> waybillService.save(request));
+    }
+
+    @Test
+    void testSaveWaybill_OrderAlreadyHasWaybill() {
+        WaybillRequest waybillRequest = new WaybillRequest();
+        waybillRequest.setOrderId(1L);
+
+        when(waybillRepository.findByOrderId(1L)).thenReturn(Optional.of(new Waybill()));
+
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+            waybillService.save(waybillRequest);
+        });
+
+        assertEquals("This order already had a waybill. Please choose another order!", exception.getMessage());
+    }
+
+    @Test
+    void testSaveWaybill_GhnApiError() {
+        WaybillRequest waybillRequest = new WaybillRequest();
+        waybillRequest.setOrderId(1L);
+
+        Order order = new Order();
+        order.setId(1L);
+        order.setStatus(1);
+        order.setPaymentMethodType(PaymentMethodType.CASH);
+        order.setTotalPay(BigDecimal.valueOf(100000));
+
+
+        when(waybillRepository.findByOrderId(1L)).thenReturn(Optional.empty());
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(GhnCreateOrderResponse.class)))
+                .thenReturn(new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR));
+
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+            waybillService.save(waybillRequest);
+        });
+
+        assertEquals("Error when calling Create Order GHN API", exception.getMessage());
+    }
+
+
+
 
 
 }

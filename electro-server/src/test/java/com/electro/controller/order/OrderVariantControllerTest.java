@@ -37,7 +37,7 @@ public class OrderVariantControllerTest {
 
     //Kiểm tra xóa thành công đơn variant với mã hợp lệ
     //
-    // TCD01
+    // TC_ORDER_007
     @Test
     void TC01_deleteOrderVariant_ShouldReturnNoContent_WhenValidOrderAndVariantIds() {
         // Arrange
@@ -57,7 +57,7 @@ public class OrderVariantControllerTest {
     }
 
 
-   // TCD02
+   // TC_ORDER_008
     @Test
     void TC02_deleteOrderVariant_ShouldReturnNotFound_WhenOrderOrVariantNotExist() {
         // Arrange
@@ -80,7 +80,7 @@ public class OrderVariantControllerTest {
 
 
 
-    // TCD03
+    // TC_ORDER_009
     // xoa voi danh sach rong
     @Test
     void TC03_deleteOrderVariants_ShouldReturnBadRequest_WhenEmptyList() {
@@ -96,7 +96,7 @@ public class OrderVariantControllerTest {
 
 
 
-    // TCD04
+    // TC_ORDER_010
     // Test Case 1: Xóa thành công các OrderVariant
     // Mã: TC01
     // Mục tiêu: Kiểm tra phương thức deleteOrderVariants khi đầu vào hợp lệ, trả về HTTP NO_CONTENT
@@ -128,7 +128,7 @@ public class OrderVariantControllerTest {
 
 
 
-    // TCD05
+    // TC_ORDER_011
     // Test Case 2: Danh sách rỗng, không có OrderVariant để xóa
     // Mã: TC02
     // Mục tiêu: Kiểm tra phương thức deleteOrderVariants khi danh sách đầu vào rỗng
@@ -149,7 +149,7 @@ public class OrderVariantControllerTest {
     }
 
 
-    // TCD06
+    // TC_ORDER_012
     // Test Case 3: Danh sách chứa OrderVariant không hợp lệ (orderId hoặc variantId null)
     // Mã: TC03
     // Mục tiêu: Kiểm tra phương thức deleteOrderVariants khi một phần tử trong danh sách có orderId hoặc variantId null
@@ -172,7 +172,7 @@ public class OrderVariantControllerTest {
     }
 
 
-    // TCD07
+    // TC_ORDER_013
     // Test Case 4: Xóa OrderVariant thất bại do lỗi từ Service
     // Mã: TC04
     // Mục tiêu: Kiểm tra trường hợp xóa OrderVariant thất bại trong service (ví dụ: lỗi hệ thống)
