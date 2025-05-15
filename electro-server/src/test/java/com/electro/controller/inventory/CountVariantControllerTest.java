@@ -31,9 +31,20 @@ class CountVariantControllerTest {
     }
 
     /**
-     * Test ID: CV-CT-001
+     * Test ID: 1
      * Test case: Xóa một count variant với ID hợp lệ
-     * Mục tiêu: Kiểm tra controller trả về status NO_CONTENT và gọi service.delete() với đúng tham số
+     * 
+     * Mục tiêu:
+     * - Kiểm tra controller trả về status NO_CONTENT khi xóa thành công
+     * - Kiểm tra service.delete() được gọi với đúng tham số
+     * 
+     * Dữ liệu test:
+     * - countId = 1L
+     * - variantId = 1L
+     * 
+     * Kết quả mong muốn:
+     * - Status code: 204 NO_CONTENT
+     * - Service.delete() được gọi 1 lần với key = CountVariantKey(1, 1)
      */
     @Test
     void deleteCountVariant_WithValidId_ShouldDeleteSuccessfully() {
@@ -51,12 +62,23 @@ class CountVariantControllerTest {
     }
 
     /**
-     * Test ID: CV-CT-002
+     * Test ID: 2
      * Test case: Xóa một count variant với ID không tồn tại
-     * Mục tiêu: Kiểm tra controller vẫn trả về status NO_CONTENT và gọi service.delete() với ID không tồn tại
+     * 
+     * Mục tiêu:
+     * - Kiểm tra controller trả về status NOT_FOUND khi ID không tồn tại
+     * - Kiểm tra service.delete() được gọi với ID không tồn tại
+     * 
+     * Dữ liệu test:
+     * - countId = 999L (ID không tồn tại)
+     * - variantId = 999L (ID không tồn tại)
+     * 
+     * Kết quả mong muốn:
+     * - Status code: 404 NOT_FOUND
+     * - Service.delete() được gọi 1 lần với key = CountVariantKey(999, 999)
      */
     @Test
-    void deleteCountVariant_WithNonExistentId_ShouldReturnNoContent() {
+    void deleteCountVariant_WithNonExistentId_ShouldReturnNotFound() {
         // Arrange
         Long countId = 999L;
         Long variantId = 999L;
@@ -66,14 +88,28 @@ class CountVariantControllerTest {
         ResponseEntity<Void> response = countVariantController.deleteCountVariant(countId, variantId);
 
         // Assert
-        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         verify(countVariantService, times(1)).delete(key);
     }
 
     /**
-     * Test ID: CV-CT-003
+     * Test ID: 3
      * Test case: Xóa nhiều count variant với danh sách ID hợp lệ
-     * Mục tiêu: Kiểm tra controller trả về status NO_CONTENT và gọi service.delete() với đúng danh sách tham số
+     * 
+     * Mục tiêu:
+     * - Kiểm tra controller trả về status NO_CONTENT khi xóa nhiều bản ghi thành công
+     * - Kiểm tra service.delete() được gọi với đúng danh sách tham số
+     * 
+     * Dữ liệu test:
+     * - Danh sách 2 cặp ID hợp lệ:
+     *   + countId = 1L, variantId = 1L
+     *   + countId = 2L, variantId = 2L
+     * 
+     * Kết quả mong muốn:
+     * - Status code: 204 NO_CONTENT
+     * - Service.delete() được gọi 1 lần với danh sách 2 key:
+     *   + CountVariantKey(1, 1)
+     *   + CountVariantKey(2, 2)
      */
     @Test
     void deleteCountVariants_WithValidIds_ShouldDeleteAllSuccessfully() {
@@ -102,9 +138,19 @@ class CountVariantControllerTest {
     }
 
     /**
-     * Test ID: CV-CT-004
+     * Test ID: 4
      * Test case: Xóa nhiều count variant với danh sách rỗng
-     * Mục tiêu: Kiểm tra controller trả về status NO_CONTENT và gọi service.delete() với danh sách rỗng
+     * 
+     * Mục tiêu:
+     * - Kiểm tra controller trả về status NO_CONTENT khi gửi danh sách rỗng
+     * - Kiểm tra service.delete() được gọi với danh sách rỗng
+     * 
+     * Dữ liệu test:
+     * - Danh sách rỗng
+     * 
+     * Kết quả mong muốn:
+     * - Status code: 204 NO_CONTENT
+     * - Service.delete() được gọi 1 lần với danh sách rỗng
      */
     @Test
     void deleteCountVariants_WithEmptyList_ShouldReturnNoContent() {
@@ -120,12 +166,26 @@ class CountVariantControllerTest {
     }
 
     /**
-     * Test ID: CV-CT-005
+     * Test ID: 5
      * Test case: Xóa nhiều count variant với danh sách ID không tồn tại
-     * Mục tiêu: Kiểm tra controller trả về status NO_CONTENT và gọi service.delete() với danh sách ID không tồn tại
+     * 
+     * Mục tiêu:
+     * - Kiểm tra controller trả về status NOT_FOUND khi xóa nhiều ID không tồn tại
+     * - Kiểm tra service.delete() được gọi với danh sách ID không tồn tại
+     * 
+     * Dữ liệu test:
+     * - Danh sách 2 cặp ID không tồn tại:
+     *   + countId = 999L, variantId = 999L
+     *   + countId = 888L, variantId = 888L
+     * 
+     * Kết quả mong muốn:
+     * - Status code: 404 NOT_FOUND
+     * - Service.delete() được gọi 1 lần với danh sách 2 key:
+     *   + CountVariantKey(999, 999)
+     *   + CountVariantKey(888, 888)
      */
     @Test
-    void deleteCountVariants_WithNonExistentIds_ShouldReturnNoContent() {
+    void deleteCountVariants_WithNonExistentIds_ShouldReturnNotFound() {
         // Arrange
         CountVariantKeyRequest request1 = new CountVariantKeyRequest();
         request1.setCountId(999L);
@@ -146,7 +206,7 @@ class CountVariantControllerTest {
         ResponseEntity<Void> response = countVariantController.deleteCountVariants(requests);
 
         // Assert
-        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         verify(countVariantService, times(1)).delete(expectedKeys);
     }
 } 
