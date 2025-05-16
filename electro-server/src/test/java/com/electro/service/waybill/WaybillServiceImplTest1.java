@@ -48,7 +48,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @Transactional
-@Rollback
 @SpringBootTest
 @ExtendWith(MockitoExtension.class)
 class WaybillServiceImplTest1 {
