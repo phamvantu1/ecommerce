@@ -946,12 +946,14 @@ void testSave_VerifyHeadersSentCorrectly() {
 
 
 //TC_WAYBILL_029
+// Trường hợp variantProperties là null → trả về nguyên tên sản phẩm
     @Test
     void TC01_nullVariantProperties() {
         String result = invoke("Laptop Lenovo", null);
         assertEquals("Laptop Lenovo", result);
     }
 //TC_WAYBILL_030
+// Trường hợp variantProperties là mảng rỗng → trả về nguyên tên sản phẩm
     @Test
     void TC02_emptyArray() {
         JsonNode variantProperties = toJsonNode("[]");
@@ -959,6 +961,7 @@ void testSave_VerifyHeadersSentCorrectly() {
         assertEquals("Laptop Lenovo", result);
     }
 //.TC_WAYBILL_031
+// Có 1 thuộc tính: Kích cỡ: S → tên sản phẩm sẽ kèm theo mô tả đó
     @Test
     void TC03_singleProperty() {
         JsonNode variantProperties = toJsonNode("[{ \"name\": \"Kích cỡ\", \"value\": \"S\" }]");
@@ -967,6 +970,7 @@ void testSave_VerifyHeadersSentCorrectly() {
     }
 
     //TC_WAYBILL_032
+    // Có nhiều thuộc tính: tên sản phẩm sẽ bao gồm tất cả mô tả
     @Test
     void TC04_multipleProperties() {
         JsonNode variantProperties = toJsonNode("[{ \"name\": \"Kích cỡ\", \"value\": \"S\" }, { \"name\": \"Màu sắc\", \"value\": \"Đỏ\" }]");
@@ -975,6 +979,7 @@ void testSave_VerifyHeadersSentCorrectly() {
     }
 
     //TC_WAYBILL_033
+    // Trường hợp kiểm tra null vẫn được xử lý như TC01
     @Test
     void TC05_nullIsHandled() {
         String result = invoke("Laptop Lenovo", null);
@@ -982,6 +987,7 @@ void testSave_VerifyHeadersSentCorrectly() {
     }
 
     //TC_WAYBILL_034
+    // Truyền JSON sai định dạng → method ném RuntimeException
     @Test
     void TC06_invalidJsonFormat() {
         JsonNode invalidJson = toJsonNode("\"not an array\"");
@@ -989,6 +995,7 @@ void testSave_VerifyHeadersSentCorrectly() {
     }
 
     //TC_WAYBILL_035
+    // Thiếu key "name" trong variant → hiển thị là null: S
     @Test
     void TC07_missingNameKey() {
         JsonNode json = toJsonNode("[{ \"value\": \"S\" }]");
@@ -997,6 +1004,7 @@ void testSave_VerifyHeadersSentCorrectly() {
     }
 
     //TC_WAYBILL_036
+    // Thiếu key "value" trong variant → hiển thị là Kích cỡ: null
     @Test
     void TC08_missingValueKey() {
         JsonNode json = toJsonNode("[{ \"name\": \"Kích cỡ\" }]");
@@ -1005,6 +1013,7 @@ void testSave_VerifyHeadersSentCorrectly() {
     }
 
     //TC_WAYBILL_037
+    // Tên sản phẩm là null → vẫn hiển thị các thuộc tính
     @Test
     void TC09_nullProductName() {
         JsonNode json = toJsonNode("[{ \"name\": \"Size\", \"value\": \"L\" }]");
@@ -1013,6 +1022,7 @@ void testSave_VerifyHeadersSentCorrectly() {
     }
 
     //TC_WAYBILL_038
+    // Tên sản phẩm rỗng → vẫn hiển thị các thuộc tính
     @Test
     void TC10_emptyProductName() {
         JsonNode json = toJsonNode("[{ \"name\": \"Size\", \"value\": \"L\" }]");
@@ -1043,6 +1053,7 @@ void testSave_VerifyHeadersSentCorrectly() {
 
 
 //TC_WAYBILL_039
+// Khi trạng thái GHN là "ready_to_pick" → cập nhật order.status = 2
     @Test
     void testReadyToPick() {
         Waybill waybill = new Waybill();
@@ -1067,6 +1078,7 @@ void testSave_VerifyHeadersSentCorrectly() {
 
 
     //TC_WAYBILL_040
+    // Khi trạng thái GHN là "picked" → cập nhật order.status = 3
     @Test
     void testPicked() {
         Waybill waybill = new Waybill();
@@ -1091,6 +1103,7 @@ void testSave_VerifyHeadersSentCorrectly() {
 
 
     //TC_WAYBILL_041
+    // Khi trạng thái GHN là "delivered" → cập nhật order.status = 4
     @Test
     void testDelivered() {
         Waybill waybill = new Waybill();
@@ -1116,6 +1129,7 @@ void testSave_VerifyHeadersSentCorrectly() {
 
 
     //TC_WAYBILL_042
+    // Khi trạng thái GHN là "cancel" → cập nhật order.status = 5
     @Test
     void testCancel() {
         Waybill waybill = new Waybill();
@@ -1141,6 +1155,7 @@ void testSave_VerifyHeadersSentCorrectly() {
 
 
     //TC_WAYBILL_043
+    // Khi trạng thái GHN là "exception" → cập nhật order.status = 6
     @Test
     void testException() {
         Waybill waybill = new Waybill();
@@ -1167,6 +1182,7 @@ void testSave_VerifyHeadersSentCorrectly() {
 
 
     //TC_WAYBILL_044
+    // Khi trạng thái gửi về trùng với trạng thái hiện tại → không cập nhật
     @Test
     void testInvalidStatusIgnored() {
         Waybill waybill = new Waybill();
@@ -1191,6 +1207,7 @@ void testSave_VerifyHeadersSentCorrectly() {
     }
 
     //TC_WAYBILL_045
+    // Nếu không tìm thấy waybill → không làm gì cả
     @Test
     void testWaybillNotFound() {
         GhnCallbackOrderRequest req = new GhnCallbackOrderRequest();
@@ -1207,6 +1224,7 @@ void testSave_VerifyHeadersSentCorrectly() {
     }
 
     //TC_WAYBILL_046
+    // Nếu shopID không khớp → không xử lý trạng thái
     @Test
     void testWrongShopIdIgnored() {
         Waybill waybill = new Waybill();
@@ -1228,6 +1246,7 @@ void testSave_VerifyHeadersSentCorrectly() {
     }
 
     //TC_WAYBILL_047
+// Nếu trạng thái gửi về giống trạng thái hiện tại → không update gì cả
     @Test
     void testStatusUnchanged() {
         Waybill waybill = new Waybill();
