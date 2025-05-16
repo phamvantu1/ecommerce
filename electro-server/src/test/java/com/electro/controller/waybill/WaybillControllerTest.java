@@ -30,7 +30,7 @@ class WaybillControllerTest {
         waybillController = new WaybillController(waybillService);
     }
 
-    /**
+    /**TC_WAYBILL_055
      * TCCB01 - Mục tiêu: Kiểm tra controller gọi đúng phương thức service
      * Input: Đối tượng GhnCallbackOrderRequest hợp lệ
      * Expected Output: Phương thức service callbackStatusWaybillFromGHN được gọi đúng 1 lần
@@ -58,7 +58,7 @@ class WaybillControllerTest {
         assertEquals(new ObjectNode(JsonNodeFactory.instance), response.getBody());
     }
 
-    /**
+    /**TC_WAYBILL_056
      * TC02 - Mục tiêu: Kiểm tra controller xử lý khi request null
      * Input: null
      * Expected Output: Ném NullPointerException hoặc xử lý tùy thuộc vào logic thực tế
@@ -98,7 +98,7 @@ class WaybillControllerTest {
         assertEquals(new ObjectNode(JsonNodeFactory.instance), response.getBody());
     }
 
-    /**
+    /**TC_WAYBILL_057
      * TC04 - Mục tiêu: Kiểm tra controller xử lý khi service ném exception
      * Input: GhnCallbackOrderRequest hợp lệ
      * Expected Output: Exception ném ra từ service được propagate lại
@@ -122,7 +122,7 @@ class WaybillControllerTest {
         }
     }
 
-    /**
+    /**TC_WAYBILL_059
      * TC_WAYBILL_059 - Mục tiêu: Kiểm tra response luôn trả về ObjectNode rỗng và status OK
      * Input: request bất kỳ
      * Expected Output: ResponseEntity với status 404 và body là ObjectNode rỗng
@@ -146,7 +146,7 @@ class WaybillControllerTest {
         assertEquals("Order not found", response.getBody().get("message").asText());
     }
 
-    /**
+    /**TC_WAYBILL_060
      * TCCB02 - Mục tiêu: Không gọi service nếu cân nặng vượt quá giới hạn
      * Input: weight = 1,000,000 (giới hạn là 100,000)
      * Expected: Không gọi service, HTTP 202, trả về message lỗi
@@ -166,7 +166,7 @@ class WaybillControllerTest {
         assertEquals("Cân nặng vượt quá giới hạn cho phép", response.getBody().get("error").asText());
     }
 
-    /**
+    /**TC_WAYBILL_061
      * TCCB07 - Mục tiêu: Không gọi service nếu mã đơn hàng thiếu
      * Input: orderCode = null
      * Expected: Không gọi service, HTTP 202, trả về message lỗi
@@ -185,7 +185,7 @@ class WaybillControllerTest {
         assertEquals("Thiếu mã đơn hàng", response.getBody().get("error").asText());
     }
 
-    /**
+    /**TC_WAYBILL_062
      * TCCB08 - Mục tiêu:  don hang khong ton tai
      * Input: orderCode = "GHN999999"
      * Expected: trả thông bo khôgn tìm thay don hang
@@ -206,7 +206,7 @@ class WaybillControllerTest {
     }
 
 
-    /**
+    /**TC_WAYBILL_063
      * TCCB09 - Mục tiêu:  trang thai khong dung dinh dang
      * Input: status = "lost"
      * Expected: thông báo không hỗ trợ trạng thái này
@@ -225,6 +225,7 @@ class WaybillControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
     }
 
+    //TC_WAYBILL_064
     @Test
     @DisplayName("TCCB010 - COD là số âm => Trả về 400 Bad Request")
     void testNegativeCOD_ShouldReturn400() {
