@@ -2,17 +2,12 @@ package com.electro.service.waybill;
 
 import com.electro.constant.ResourceName;
 import com.electro.dto.ListResponse;
-import com.electro.dto.general.NotificationResponse;
 import com.electro.dto.waybill.*;
 import com.electro.entity.authentication.User;
 import com.electro.entity.cashbook.PaymentMethodType;
 import com.electro.entity.general.Notification;
-import com.electro.entity.general.NotificationType;
 import com.electro.entity.order.Order;
 import com.electro.entity.order.OrderVariant;
-import com.electro.entity.product.Product;
-import com.electro.entity.product.Specification;
-import com.electro.entity.product.Variant;
 import com.electro.entity.waybill.Waybill;
 import com.electro.entity.waybill.WaybillLog;
 import com.electro.exception.ResourceNotFoundException;
@@ -31,17 +26,20 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.*;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.*;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
-import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.*;
@@ -50,30 +48,31 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @Transactional
-@Rollback
+@SpringBootTest
 @ExtendWith(MockitoExtension.class)
-class WaybillServiceImplTest {
+class WaybillServiceImplTest1 {
 
     @InjectMocks
     private WaybillServiceImpl waybillService;
 
-    @Mock
+    @Autowired
     private OrderRepository orderRepository;
-    @Mock
+
+    @Autowired
     private WaybillRepository waybillRepository;
 
-    @Mock
+    @Autowired
     private NotificationRepository notificationRepository;
 
-    @Mock
+    @Autowired
     private NotificationService notificationService;
 
-    @Mock
+    @Autowired
     private NotificationMapper notificationMapper;
-    @Mock
+    @Autowired
     private WaybillLogRepository waybillLogRepository;
 
-    @Mock
+    @Autowired
     private WaybillMapper waybillMapper;
 
     private JsonNode toJsonNode(String json) {
@@ -87,7 +86,7 @@ class WaybillServiceImplTest {
     @Mock
     private RestTemplate restTemplate;
 
-    @Mock
+    @Autowired
     private RewardUtils rewardUtils;
 
 

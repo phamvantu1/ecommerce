@@ -96,7 +96,7 @@ public class WaybillServiceImpl implements WaybillService {
 
         // Tạo waybill khi order.status == 1
         if (order.getStatus() == 1) {
-            String createGhnOrderApiPath = ghnApiPath + "/shipping-order/create";
+            String createGhnOrderApiPath = "https://dev-online-gateway.ghn.vn/shiip/public-api/v2" + "/shipping-order/create";
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -186,7 +186,7 @@ public class WaybillServiceImpl implements WaybillService {
         Waybill waybill = waybillRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(ResourceName.WAYBILL, FieldName.ID, id));
 
-        String updateGhnOrderApiPath = ghnApiPath + "/shipping-order/update";
+        String updateGhnOrderApiPath = "https://dev-online-gateway.ghn.vn/shiip/public-api/v2" + "/shipping-order/update";
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -385,8 +385,8 @@ public class WaybillServiceImpl implements WaybillService {
     private void createNotification(Notification notification) {
         notificationRepository.save(notification);
 
-        notificationService.pushNotification(notification.getUser().getUsername(),
-                notificationMapper.entityToResponse(notification));
+//        notificationService.pushNotification(notification.getUser().getUsername(),
+//                notificationMapper.entityToResponse(notification));
     }
 
 }
